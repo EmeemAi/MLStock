@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Equipos - Google Sheets</title>
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
+    
+    <!-- Framer Motion -->
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F5;
+            color: #1A1A1A;
+        }
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Iconos SVG inline para evitar dependencias de Lucide en React UMD
+        const Icons = {
+            Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+            ClipboardList: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clipboard-list"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>,
+            CheckCircle2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle-2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Package: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-package"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>,
+            Hash: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-hash"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>,
+            User: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+            RefreshCw: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>,
+            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>,
+            AlertCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
+            X: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>,
+            FileSpreadsheet: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-spreadsheet"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/><path d="M8 9h2"/><path d="M14 9h2"/></svg>,
+            ExternalLink: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-external-link"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+        };
+
+        // URL de tu Google Apps Script
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxBruVsie0M_4_r_tqVSXOe1w6UiFSnzao-a7ukhsq2hvmipexlglJfzD19P7LD1m4Y/exec';
+
+        function App() {
+            const [equipos, setEquipos] = useState([]);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterType, setFilterType] = useState('instrumento');
+            const [isLoading, setIsLoading] = useState(true);
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [error, setError] = useState(null);
+
+            const [newEquipo, setNewEquipo] = useState({
+                instrumento: '',
+                marca: '',
+                modelo: '',
+                serie: '',
+                certificado: '',
+                cliente: '',
+                fecha: new Date().toISOString().split('T')[0],
+                estado: 'pendiente'
+            });
+
+            const fetchData = async () => {
+                setIsLoading(true);
+                try {
+                    const res = await fetch(GAS_URL);
+                    if (!res.ok) throw new Error('Error en la respuesta');
+                    const data = await res.json();
+                    
+                    // Normalizar estados
+                    const normalized = data.map(item => ({
+                        ...item,
+                        estado: item.estado?.toString().toLowerCase() === 'entregado' ? 'entregado' : 'pendiente'
+                    }));
+                    setEquipos(normalized);
+                } catch (err) {
+                    console.error('Fetch error:', err);
+                    setError('Error al conectar con Google Sheets. Revisa la consola.');
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const toggleEstado = async (id, currentEstado) => {
+                const equipo = equipos.find(e => e.id === id);
+                if (!equipo) return;
+
+                const newEstado = currentEstado === 'entregado' ? 'pendiente' : 'entregado';
+                
+                // Actualización optimista
+                setEquipos(prev => prev.map(e => e.id === id ? { ...e, estado: newEstado } : e));
+
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ 
+                            ...equipo, 
+                            estado: newEstado, 
+                            action: 'update' 
+                        })
+                    });
+                    // Recargar después de un momento para confirmar
+                    setTimeout(fetchData, 2000);
+                } catch (err) {
+                    console.error('Update error:', err);
+                    setError('Error al actualizar en la hoja');
+                    fetchData(); // Revertir
+                }
+            };
+
+            const handleAddEquipo = async (e) => {
+                e.preventDefault();
+                if (!newEquipo.instrumento) return;
+
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ ...newEquipo, action: 'add' })
+                    });
+                    
+                    setShowAddModal(false);
+                    setNewEquipo({
+                        instrumento: '',
+                        marca: '',
+                        modelo: '',
+                        serie: '',
+                        certificado: '',
+                        cliente: '',
+                        fecha: new Date().toISOString().split('T')[0],
+                        estado: 'pendiente'
+                    });
+                    
+                    setError('Guardando...');
+                    setTimeout(() => {
+                        setError(null);
+                        fetchData();
+                    }, 2000);
+                } catch (err) {
+                    setError('Error al añadir');
+                }
+            };
+
+            const handleDeleteEquipo = async (id) => {
+                if (!confirm('¿Eliminar este equipo de la hoja?')) return;
+                
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ id, action: 'delete' })
+                    });
+                    setEquipos(prev => prev.filter(e => e.id !== id));
+                    setTimeout(fetchData, 2000);
+                } catch (err) {
+                    setError('Error al eliminar');
+                }
+            };
+
+            const filteredEquipos = useMemo(() => {
+                return equipos.filter((equipo) => {
+                    const value = filterType === 'instrumento' ? equipo.instrumento : equipo.certificado;
+                    return (value || '').toString().toLowerCase().includes(searchTerm.toLowerCase());
+                });
+            }, [equipos, searchTerm, filterType]);
+
+            return (
+                <div className="min-h-screen">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                        <div className="max-w-7xl mx-auto px-4 py-6">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                                        <Icons.ClipboardList />
+                                        Gestión de Equipos
+                                    </h1>
+                                    <p className="text-sm text-gray-500 italic flex items-center gap-1">
+                                        <Icons.FileSpreadsheet />
+                                        Sincronizado con Google Sheets
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <div className="relative">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400">
+                                            <Icons.Search />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            className="pl-10 pr-4 py-2 border rounded-xl w-full sm:w-64 focus:ring-2 focus:ring-black outline-none"
+                                            placeholder={`Buscar por ${filterType}...`}
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                    
+                                    <div className="flex bg-gray-100 rounded-xl p-1">
+                                        <button
+                                            onClick={() => setFilterType('instrumento')}
+                                            className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${filterType === 'instrumento' ? 'bg-black text-white' : 'text-gray-500'}`}
+                                        >
+                                            Instrumento
+                                        </button>
+                                        <button
+                                            onClick={() => setFilterType('certificado')}
+                                            className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${filterType === 'certificado' ? 'bg-black text-white' : 'text-gray-500'}`}
+                                        >
+                                            Certificado
+                                        </button>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setShowAddModal(true)}
+                                            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-sm font-bold hover:opacity-80 transition-all"
+                                        >
+                                            <Icons.Plus />
+                                            Añadir
+                                        </button>
+                                        <a 
+                                            href="https://docs.google.com/spreadsheets/d/1D8hgALVBq4NuxT4kStvQDHCVkOhTe59tMfmMf36FWDY/edit" 
+                                            target="_blank" 
+                                            className="p-2 border rounded-xl hover:bg-gray-50 flex items-center justify-center"
+                                        >
+                                            <Icons.ExternalLink />
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        {isLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20">
+                                <div className="w-12 h-12 animate-spin mb-4 text-black">
+                                    <Icons.RefreshCw />
+                                </div>
+                                <p className="text-gray-500">Cargando datos...</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredEquipos.map((equipo) => (
+                                    <div key={equipo.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-2 bg-gray-100 rounded-lg">
+                                                    <Icons.Package />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold leading-tight">{equipo.instrumento}</h3>
+                                                    <p className="text-xs text-gray-500">{equipo.marca} {equipo.modelo}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${equipo.estado === 'entregado' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                    {equipo.estado}
+                                                </span>
+                                                <button 
+                                                    onClick={() => handleDeleteEquipo(equipo.id)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-all"
+                                                >
+                                                    <Icons.Trash2 />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2 mb-6 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 text-gray-400"><Icons.Hash /></div>
+                                                <span>Serie: {equipo.serie || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 text-gray-400"><Icons.ClipboardList /></div>
+                                                <span>Cert: {equipo.certificado || 'Pendiente'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 text-gray-400"><Icons.User /></div>
+                                                <span>{equipo.cliente || 'Sin cliente'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 text-gray-400"><Icons.Calendar /></div>
+                                                <span>{equipo.fecha || 'Sin fecha'}</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => toggleEstado(equipo.id, equipo.estado)}
+                                            className={`w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${equipo.estado === 'entregado' ? 'bg-gray-100 hover:bg-gray-200' : 'bg-black text-white hover:opacity-80'}`}
+                                        >
+                                            {equipo.estado === 'entregado' ? <><Icons.Clock /> Pendiente</> : <><Icons.CheckCircle2 /> Entregado</>}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {!isLoading && filteredEquipos.length === 0 && (
+                            <div className="text-center py-20">
+                                <div className="w-12 h-12 text-gray-200 mx-auto mb-4"><Icons.Search /></div>
+                                <h3 className="text-lg font-bold">No hay resultados</h3>
+                                <button onClick={() => setShowAddModal(true)} className="mt-4 px-6 py-2 bg-black text-white rounded-xl font-bold text-sm">Añadir Equipo</button>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Add Modal */}
+                    {showAddModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-bold flex items-center gap-2"><Icons.Plus /> Nuevo Equipo</h2>
+                                    <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><Icons.X /></button>
+                                </div>
+                                <form onSubmit={handleAddEquipo} className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="sm:col-span-2">
+                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Instrumento *</label>
+                                            <input required type="text" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.instrumento} onChange={(e) => setNewEquipo({...newEquipo, instrumento: e.target.value})} />
+                                        </div>
+                                        <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Marca</label><input type="text" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.marca} onChange={(e) => setNewEquipo({...newEquipo, marca: e.target.value})} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Modelo</label><input type="text" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.modelo} onChange={(e) => setNewEquipo({...newEquipo, modelo: e.target.value})} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Serie</label><input type="text" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.serie} onChange={(e) => setNewEquipo({...newEquipo, serie: e.target.value})} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Certificado</label><input type="text" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.certificado} onChange={(e) => setNewEquipo({...newEquipo, certificado: e.target.value})} /></div>
+                                        <div className="sm:col-span-2"><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Cliente</label><input type="text" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.cliente} onChange={(e) => setNewEquipo({...newEquipo, cliente: e.target.value})} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha</label><input type="date" className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.fecha} onChange={(e) => setNewEquipo({...newEquipo, fecha: e.target.value})} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Estado</label><select className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-black" value={newEquipo.estado} onChange={(e) => setNewEquipo({...newEquipo, estado: e.target.value})}><option value="pendiente">Pendiente</option><option value="entregado">Entregado</option></select></div>
+                                    </div>
+                                    <div className="flex gap-3 pt-4">
+                                        <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 border rounded-xl font-bold text-sm hover:bg-gray-50">Cancelar</button>
+                                        <button type="submit" className="flex-1 py-3 bg-black text-white rounded-xl font-bold text-sm hover:opacity-80">Guardar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Error Toast */}
+                    {error && (
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3">
+                            <div className="w-5 h-5"><Icons.AlertCircle /></div>
+                            <span className="text-sm font-bold">{error}</span>
+                            <button onClick={() => setError(null)} className="ml-2 hover:opacity-70"><div className="w-4 h-4"><Icons.X /></div></button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
